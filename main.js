@@ -10,7 +10,7 @@
  * Created by Adrian Vatchinsky on 10/9/21.
  */
 
-let debug = true;
+let debug = false;
 
 let canvas; // html ref
 let context; // canvas context
@@ -20,7 +20,7 @@ let clickCoordsOnGrid; // {x:number; y:number;}
 let mouseCoords; // {x:number; y:number;}
 let mouseCoordsOnGrid; // {x:number; y:number;}
 
-let padding = 2;
+let padding = 1; // number (padding of grid items)
 
 let resolution = 64; // number (how many even squares to divide canvas into)
 let state; // number[][]
@@ -58,11 +58,24 @@ const initState = async () => {
   const dX = width / resolution;
   const dY = height / resolution;
 
-  state = [...Array(dX)].map((_) =>
-    Array(dY).fill(1 + Math.floor(Math.random() * images.length))
-  );
+  state = [...Array(dX)].map((_) => Array(dY).fill(0));
+
+  const initStateValues = true;
+  if (initStateValues) {
+    initStateValues();
+  }
+
+  console.log(state);
 
   return true;
+};
+
+const initStateValues = async () => {
+  state.forEach((_, y) =>
+    state[y].forEach(
+      (_, x) => (state[x][y] = 1 + Math.floor(Math.random() * images.length))
+    )
+  );
 };
 
 const init = async () => {
@@ -87,7 +100,10 @@ const init = async () => {
 
 const updateStateValueOnClick = async (x, y) => {
   state[x][y] = state[x][y] + 1;
+  updateStateInStore();
 };
+
+const updateStateInStore = async () => {};
 
 /******************************************
  *
@@ -100,10 +116,6 @@ const draw = () => {
     state[y].forEach((col, x) => {
       const coords = mapGridElToCoordRange(x, y);
 
-      //
-      // Highlight grid item that has mouse over it
-      //
-
       // add padding to the item
       const gridItem = {
         x: coords.x + padding,
@@ -111,6 +123,11 @@ const draw = () => {
         dX: coords.dX - 2 * padding,
         dY: coords.dY - 2 * padding,
       };
+
+      //
+      // TODO:
+      // Highlight grid item that has mouse over it
+      //
 
       // if (
       //   mouseCoords &&
@@ -128,6 +145,7 @@ const draw = () => {
 
       //
       // Populate the box w the appropriate image
+      // assumption: Images are the same dimensions as canvas (512x512)
       // ref: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
       //
 
