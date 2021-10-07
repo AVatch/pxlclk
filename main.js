@@ -15,9 +15,14 @@ let debug = true;
 let canvas; // html ref
 let context; // canvas context
 let mouseCoords; // {x:number; y:number;}
+let mouseCoordsOnGrid; // {x:number; y:number;}
+
+let padding = 2;
 
 let resolution = 64; // number (how many even squares to divide canvas into)
 let state; // number[][]
+
+let didInitialDraw = false;
 
 /******************************************
  *
@@ -56,6 +61,7 @@ const init = async () => {
     return;
   }
 
+  window.addEventListener("click", click, false);
   window.addEventListener("mousemove", track, false);
 
   draw();
@@ -68,32 +74,70 @@ const init = async () => {
  ******************************************/
 
 const draw = () => {
-  drawGrid();
-  drawActiveGridItem();
+  console.log("draw");
+  console.log(mouseCoordsOnGrid);
 
-  if (debug) {
-    drawDebugGrid();
-  }
-
-  // loop
-  // setTimeout(() => {
-  //   draw();
-  // }, 10000);
-};
-
-const drawGrid = () => {
   state.forEach((row, y) => {
-    row.forEach((col, x) => {
-      const el = state[x][y];
+    state[y].forEach((col, x) => {
+      const coords = mapGridElToCoordRange(x, y);
 
-      console.log({ x, y, el });
+      //
+      // Highlight grid item that has mouse over it
+      //
+
+      // add padding to the item
+      const gridItem = {
+        x: coords.x + padding,
+        y: coords.y + padding,
+        dX: coords.dX - 2 * padding,
+        dY: coords.dY - 2 * padding,
+      };
+
+      if (
+        mouseCoords &&
+        mouseCoordsOnGrid.x === x &&
+        mouseCoordsOnGrid.y === y
+      ) {
+        context.fillStyle = "rgba(0, 0, 0, 1)";
+        context.fillRect(gridItem.x, gridItem.y, gridItem.dX, gridItem.dY);
+      } else {
+        context.fillStyle = "rgba(255, 255, 255, 1)";
+        context.fillRect(gridItem.x, gridItem.y, gridItem.dX, gridItem.dY);
+      }
+
+      // ---------------------------------------------
+
+      //
+      // Populate the box w the appropriate image
+      //
+
+      // ---------------------------------------------
+
+      if (debug) {
+        if (!didInitialDraw) {
+          //
+          // Draw grid boxes for debugging
+          //
+
+          context.globalAlpha = 1;
+          context.strokeStyle = "rgba(0, 0, 0, 1)";
+
+          context.lineWidth = 0.25;
+          context.strokeRect(coords.x, coords.y, coords.dX, coords.dY);
+
+          // ---------------------------------------------
+        }
+      }
     });
   });
+
+  if (!didInitialDraw) didInitialDraw = true;
+
+  // do da loop-de-loop
+  setTimeout(() => {
+    draw();
+  }, 500);
 };
-
-const drawActiveGridItem = () => {};
-
-const drawDebugGrid = () => {};
 
 /******************************************
  *
@@ -101,9 +145,31 @@ const drawDebugGrid = () => {};
  *
  ******************************************/
 
-const mapCoordsToGridEl = (x, y) => {};
+const mapCoordsToGridEl = (x, y) => {
+  const nX = canvas.width / resolution;
+  const nY = canvas.height / resolution;
 
-const mapGridElToCoordRange = (x, y) => {};
+  const dX = canvas.width / nX;
+  const dY = canvas.height / nY;
+
+  const gX = Math.floor(x / dX);
+  const gY = Math.floor(y / dY);
+
+  return { x: gX, y: gY };
+};
+
+const mapGridElToCoordRange = (x, y) => {
+  const nX = canvas.width / resolution;
+  const nY = canvas.height / resolution;
+
+  const dX = canvas.width / nX;
+  const dY = canvas.height / nY;
+
+  const pX = dX * x;
+  const pY = dY * y;
+
+  return { x: pX, y: pY, dX, dY };
+};
 
 /**
  * Gets the mouse coordinates relative to the canvas.
@@ -136,6 +202,10 @@ const getMouseCoords = (evt) => {
  *
  ******************************************/
 
+const click = (evt) => {
+  console.log("click");
+};
+
 const track = (evt) => {
   const coords = getMouseCoords(evt);
 
@@ -145,6 +215,9 @@ const track = (evt) => {
   }
 
   mouseCoords = coords;
+
+  // determine which grid item is active
+  mouseCoordsOnGrid = mapCoordsToGridEl(mouseCoords.x, mouseCoords.y);
 };
 
 /******************************************
