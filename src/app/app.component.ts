@@ -6,7 +6,10 @@ import {
   Firestore,
   collection,
   addDoc,
+  onSnapshot,
   setDoc,
+  doc,
+  getDoc,
 } from 'firebase/firestore';
 
 import {
@@ -58,44 +61,55 @@ export class AppComponent implements OnInit, AfterViewInit {
     // this.imgs.forEach((div: ElementRef) => console.log(div.nativeElement));
 
     this.initCanvas();
+    this.initState();
   }
 
   private async initFirebase() {
     this.firebaseApp = initializeApp(environment.firebase);
     this.firebaseDB = getFirestore();
-
-    try {
-      const docRef = await addDoc(collection(this.firebaseDB, 'users'), {
-        first: 'Alan',
-        middle: 'Mathison',
-        last: 'Turing',
-        born: 1912,
-      });
-
-      console.log('Document written with ID: ', docRef.id);
-    } catch (e) {
-      console.error('Error adding document: ', e);
-    }
   }
 
   private initCanvas() {
     this.ctx = this.canvas.nativeElement.getContext('2d');
-    console.log(this.ctx);
   }
 
   private async initState() {
     const { nX, nY } = this.resolveGridDimensions();
-    // this.state = [...Array(nX)].map((_) => Array(nY).fill(0));
+
+    const docRef = doc(this.firebaseDB, 'boards', `${nX}x${nY}`);
+
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      await this.initStateValues();
+    }
+
+    onSnapshot(docRef, (doc) => {
+      console.log('changes registered', doc.data());
+    });
   }
 
   private async initStateValues() {
     const { nX, nY } = this.resolveGridDimensions();
 
-    // state.forEach((_, y) =>
-    //   state[y].forEach(
-    //     (_, x) => (state[x][y] = 1 + Math.floor(Math.random() * images.length))
-    //   )
-    // );
+    const nImages = this.imgs.length;
+
+    let data: number[][] = [...Array(nX)].map((_) => Array(nY).fill(0));
+    data.forEach((_, y) =>
+      data[y].forEach(
+        (_, x) => (data[x][y] = 1 + Math.floor(Math.random() * nImages))
+      )
+    );
+
+    const draft = {
+      nX,
+      nY,
+      nImages,
+      data: data.reduce((acc, curr, i) => ({ ...acc, [i]: curr }), {}),
+    };
+
+    const boardsRef = collection(this.firebaseDB, 'boards');
+    await setDoc(doc(boardsRef, `${nX}x${nY}`), draft);
   }
 
   /******************************************
@@ -123,5 +137,14 @@ export class AppComponent implements OnInit, AfterViewInit {
     const nY = height / this.resolution;
 
     return { nX, nY };
+  }
+
+  private mapDataOntoState(payload: {
+    nX: number;
+    nY: number;
+    nImages: number;
+    data: { [index: string]: number[] };
+  }): number[][] {
+    return Object.keys(payload.data).map((key) => payload.data[key]);
   }
 }
