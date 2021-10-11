@@ -44,6 +44,7 @@ export class AppComponent implements OnInit, AfterViewInit {
 
   ctx!: CanvasRenderingContext2D;
   state$?: BehaviorSubject<number[][]> = new BehaviorSubject<number[][]>([[]]);
+  success$?: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
 
   @ViewChild('canvas') canvas!: ElementRef;
   @ViewChildren('img') imgs!: QueryList<ElementRef>;
@@ -97,6 +98,9 @@ export class AppComponent implements OnInit, AfterViewInit {
 
       const state = this.mapDataOntoState(payload);
       this.state$?.next(state);
+
+      const success = this.isInSync(state);
+      this.success$?.next(success);
     });
   }
 
@@ -107,46 +111,41 @@ export class AppComponent implements OnInit, AfterViewInit {
    ******************************************/
 
   private subscribeToStateChanges() {
-    this.state$?.pipe().subscribe(async (state) => {
-      await Promise.all(
-        state.map(
-          async (row, y) =>
-            await Promise.all(
-              state[y].map(async (col, x) => {
-                const coords = this.mapGridElToCoordRange(x, y);
+    this.state$?.pipe().subscribe((state) => {
+      state.map((row, y) =>
+        state[y].map(async (col, x) => {
+          const coords = this.mapGridElToCoordRange(x, y);
 
-                // add padding to the item
-                const gridItem = {
-                  x: coords.x + this.padding,
-                  y: coords.y + this.padding,
-                  dX: coords.dX - 2 * this.padding,
-                  dY: coords.dY - 2 * this.padding,
-                };
+          // add padding to the item
+          const gridItem = {
+            x: coords.x + this.padding,
+            y: coords.y + this.padding,
+            dX: coords.dX - 2 * this.padding,
+            dY: coords.dY - 2 * this.padding,
+          };
 
-                //
-                // Populate the box w the appropriate image
-                // assumption: Images are the same dimensions as canvas (512x512)
-                // ref: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
-                //
+          //
+          // Populate the box w the appropriate image
+          // assumption: Images are the same dimensions as canvas (512x512)
+          // ref: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
+          //
 
-                const image = await this.mapGridElToImage(state, x, y);
+          const image = this.mapGridElToImage(state, x, y);
 
-                if (image !== undefined) {
-                  this.ctx.drawImage(
-                    image.nativeElement,
-                    gridItem.x,
-                    gridItem.y,
-                    gridItem.dX,
-                    gridItem.dY,
-                    gridItem.x,
-                    gridItem.y,
-                    gridItem.dX,
-                    gridItem.dY
-                  );
-                }
-              })
-            )
-        )
+          if (image !== undefined) {
+            this.ctx.drawImage(
+              image.nativeElement,
+              gridItem.x,
+              gridItem.y,
+              gridItem.dX,
+              gridItem.dY,
+              gridItem.x,
+              gridItem.y,
+              gridItem.dX,
+              gridItem.dY
+            );
+          }
+        })
       );
     });
   }
@@ -182,7 +181,7 @@ export class AppComponent implements OnInit, AfterViewInit {
 
   /******************************************
    *
-   * Draw stuff
+   * Event Listeners
    *
    ******************************************/
 
@@ -207,12 +206,9 @@ export class AppComponent implements OnInit, AfterViewInit {
    ******************************************/
 
   /**
-   * Gets the mouse coordinates relative to the canvas.
-   *
-   * Returns undefined if out of bounds
-   *
    * ref: https://stackoverflow.com/questions/17130395/real-mouse-position-in-canvas
    */
+
   private getMouseCoords(ev: MouseEvent): { x: number; y: number } | undefined {
     let rect = this.canvas.nativeElement.getBoundingClientRect(); // abs. size of element
     let scaleX = this.canvas.nativeElement.width / rect.width; // relationship bitmap vs. element for X
@@ -286,6 +282,25 @@ export class AppComponent implements OnInit, AfterViewInit {
     return { x: gX, y: gY };
   }
 
+  private isInSync(state: number[][]): boolean {
+    let pointer: string | undefined = undefined;
+
+    return state.every((row, y) =>
+      state[y].every((col, x) => {
+        const currImg =
+          this.mapGridElToImage(state, x, y)?.nativeElement?.src || undefined;
+
+        if (pointer === undefined) {
+          pointer = currImg;
+        } else if (pointer !== currImg) {
+          return false;
+        }
+
+        return true;
+      })
+    );
+  }
+
   private mapGridElToCoordRange(
     x: number,
     y: number
@@ -303,11 +318,11 @@ export class AppComponent implements OnInit, AfterViewInit {
     return { x: pX, y: pY, dX, dY };
   }
 
-  private async mapGridElToImage(
+  private mapGridElToImage(
     state: number[][],
     x: number,
     y: number
-  ): Promise<ElementRef | undefined> {
+  ): ElementRef | undefined {
     const images = this.imgs.map((ref) => ref);
     const n = this.imgs.length;
 

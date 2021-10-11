@@ -1,5 +1,11 @@
 <div class="container">
-  <canvas #canvas width="512" height="512" (click)="onCanvasClick($event)">
+  <canvas
+    #canvas
+    [class.pulse]="success$ | async"
+    width="512"
+    height="512"
+    (click)="onCanvasClick($event)"
+  >
     what have you done?
   </canvas>
 </div>
