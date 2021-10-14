@@ -1,11 +1,15 @@
 <div class="container">
-  <canvas
-    #canvas
-    [class.pulse]="success$ | async"
-    width="512"
-    height="512"
-    (click)="onCanvasClick($event)"
-  >
+  <h1 data-text="PXLCLK">PXLCLK</h1>
+
+  <img
+    class="target"
+    [class.rotate-vert-center]="!(success$ | async)"
+    [src]="target"
+  />
+
+  <p class="counter">8 clicks</p>
+
+  <canvas #canvas width="512" height="512" (click)="onCanvasClick($event)">
     what have you done?
   </canvas>
 </div>
@@ -16,3 +20,10 @@
   <img #img id="img-3" src="/assets/test-03.png" />
   <img #img id="img-4" src="/assets/test-04.png" />
 </div>
+
+<!-- <button>RESET</button> -->
+
+<img
+  class="sound-on-sticker"
+  src="https://media.giphy.com/media/oFS6vzfGdYvKFbeJ7v/giphy.gif"
+/>

@@ -49,6 +49,8 @@ export class AppComponent implements OnInit, AfterViewInit {
   @ViewChild('canvas') canvas!: ElementRef;
   @ViewChildren('img') imgs!: QueryList<ElementRef>;
 
+  target?: string;
+
   /******************************************
    *
    * Init stuff
@@ -64,6 +66,7 @@ export class AppComponent implements OnInit, AfterViewInit {
   ngAfterViewInit() {
     this.initCanvas();
     this.initState();
+    this.initTarget();
 
     this.subscribeToStateChanges();
   }
@@ -102,6 +105,14 @@ export class AppComponent implements OnInit, AfterViewInit {
       const success = this.isInSync(state);
       this.success$?.next(success);
     });
+  }
+
+  private initTarget() {
+    const nImages = this.imgs.length;
+
+    this.target = this.imgs.get(
+      Math.floor(Math.random() * nImages)
+    )?.nativeElement.src;
   }
 
   /******************************************

@@ -1,6 +1,8 @@
 :host {
+  cursor: url(/assets/cursor-01.png), default !important;
+
   display: block;
-  background: red;
+  background: rgba(0, 0, 0, 1);
 
   width: 100vw;
   height: 100vh;
@@ -12,19 +14,107 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
   }
 
   .dont-look {
     display: none;
   }
 
+  // --------------------
+
+  h1 {
+    --font-size: 69px;
+
+    margin: 12px auto;
+
+    // main background is gradient
+    display: block;
+    position: relative;
+    font-size: var(--font-size);
+    background: linear-gradient(
+      to bottom,
+      #ff00ff 0%,
+      #e2fbff 50%,
+      #875cff 55%,
+      #620bee 100%
+    );
+    background-blend-mode: multiply;
+    background-size: 10px var(--font-size);
+    background-repeat: repeat;
+    line-height: 1;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+
+    // Noise
+    &::before {
+      background: none;
+      content: attr(data-text);
+      position: absolute;
+      left: 0;
+      top: 0;
+      z-index: +2;
+      background-image: url("https://i.imgur.com/Ym9HCsT.gif");
+      background-blend-mode: screen;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      opacity: 0.5;
+    }
+
+    // Shadows
+    &::after {
+      background: none;
+      content: attr(data-text);
+      position: absolute;
+      left: 0;
+      top: 0;
+      text-shadow: 1px -1px 0 rgba(255, 255, 255, 0.5),
+        3px 1px 3px rgba(255, 0, 255, 0.85), -3px -2px 3px rgba(0, 0, 255, 0.85),
+        1px -2px 0 rgba(255, 255, 255, 0.8);
+      z-index: -2;
+    }
+  }
+
+  p {
+    color: white;
+    font-size: 16px;
+    margin: 12px 0;
+  }
+
+  // --------------------
+
   canvas {
+    margin: 24px auto;
+
     background: white;
 
-    box-shadow: 0px 0px 1px 1px #0000001a;
+    box-shadow: rgba(240, 46, 170, 0.4) 5px 5px,
+      rgba(240, 46, 170, 0.3) 10px 10px, rgba(240, 46, 170, 0.2) 15px 15px,
+      rgba(240, 46, 170, 0.1) 20px 20px, rgba(240, 46, 170, 0.05) 25px 25px;
+  }
+
+  // --------------------
+
+  .controls {
+    display: flex;
+  }
+
+  img.target {
+    width: 64px;
+    height: 64px;
+  }
+
+  // --------------------
+
+  img.sound-on-sticker {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    width: 80px;
   }
 }
+
+// --------------------
 
 .pulse {
   animation: pulse-animation 2s infinite;
@@ -36,5 +126,33 @@
   }
   100% {
     box-shadow: 0 0 0 32px rgba(255, 255, 255, 0);
+  }
+}
+
+.rotate-vert-center {
+  -webkit-animation: rotate-vert-center 1.5s
+    cubic-bezier(0.455, 0.03, 0.515, 0.955) both infinite;
+  animation: rotate-vert-center 1.5s cubic-bezier(0.455, 0.03, 0.515, 0.955)
+    both infinite;
+}
+
+@-webkit-keyframes rotate-vert-center {
+  0% {
+    -webkit-transform: rotateY(0);
+    transform: rotateY(0);
+  }
+  100% {
+    -webkit-transform: rotateY(360deg);
+    transform: rotateY(360deg);
+  }
+}
+@keyframes rotate-vert-center {
+  0% {
+    -webkit-transform: rotateY(0);
+    transform: rotateY(0);
+  }
+  100% {
+    -webkit-transform: rotateY(360deg);
+    transform: rotateY(360deg);
   }
 }
