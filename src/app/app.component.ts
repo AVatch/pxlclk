@@ -87,7 +87,6 @@ export class AppComponent implements OnInit, AfterViewInit {
 
   private initCanvas() {
     this.ctx = this.canvas.nativeElement.getContext('2d');
-    console.log(this.ctx);
   }
 
   private async initState() {
@@ -102,8 +101,6 @@ export class AppComponent implements OnInit, AfterViewInit {
     }
 
     onSnapshot(docRef, (doc) => {
-      console.log('onSnapshot');
-
       const payload = doc.data() as {
         nX: number;
         nY: number;
@@ -197,7 +194,6 @@ export class AppComponent implements OnInit, AfterViewInit {
 
   private async updateStateForCoords(x: number, y: number) {
     if (await this.synced$.pipe(take(1)).toPromise()) {
-      console.log('skip, alrady synced');
       return;
     }
 
@@ -328,13 +324,6 @@ export class AppComponent implements OnInit, AfterViewInit {
       state[y].every((col, x) => {
         const currImg =
           this.mapGridElToImage(state, x, y)?.nativeElement?.src || undefined;
-        console.log(this.mapGridElToImage(state, x, y)?.nativeElement);
-
-        // if (currImg !== target) {
-        //   return false;
-        // }
-
-        console.log('isInSync', target, currImg);
 
         if (target === undefined) {
           target = currImg;
