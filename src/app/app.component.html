@@ -22,7 +22,9 @@
   </ng-container>
 </div>
 
-<!-- <button>RESET</button> -->
+<ng-container *ngIf="synced$ | async">
+  <button>RESET</button>
+</ng-container>
 
 <img
   class="sound-on-sticker"
