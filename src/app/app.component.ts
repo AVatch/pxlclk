@@ -10,6 +10,7 @@ import {
   updateDoc,
   doc,
   increment,
+  writeBatch,
   getDoc,
 } from 'firebase/firestore';
 
@@ -23,7 +24,7 @@ import {
   ViewChildren,
 } from '@angular/core';
 
-import { Observable, BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, combineLatest } from 'rxjs';
 import { take } from 'rxjs/operators';
 
 @Component({
@@ -34,6 +35,15 @@ import { take } from 'rxjs/operators';
 export class AppComponent implements OnInit, AfterViewInit {
   title = 'pxlclk';
 
+  list = [
+    '/assets/test-01.png',
+    '/assets/test-02.png',
+    '/assets/test-03.png',
+    '/assets/test-04.png',
+  ];
+
+  target = this.list[Math.floor(Math.random() * this.list.length)];
+
   private firebaseApp!: FirebaseApp;
   private firebaseDB!: Firestore;
 
@@ -43,13 +53,13 @@ export class AppComponent implements OnInit, AfterViewInit {
   resolution: number = 64; // number (how many even squares to divide canvas into)
 
   ctx!: CanvasRenderingContext2D;
-  state$?: BehaviorSubject<number[][]> = new BehaviorSubject<number[][]>([[]]);
-  success$?: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
+  state$: BehaviorSubject<number[][]> = new BehaviorSubject<number[][]>([[]]);
+  clicks$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
+  synced$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
+  success$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
 
   @ViewChild('canvas') canvas!: ElementRef;
   @ViewChildren('img') imgs!: QueryList<ElementRef>;
-
-  target?: string;
 
   /******************************************
    *
@@ -66,7 +76,6 @@ export class AppComponent implements OnInit, AfterViewInit {
   ngAfterViewInit() {
     this.initCanvas();
     this.initState();
-    this.initTarget();
 
     this.subscribeToStateChanges();
   }
@@ -78,6 +87,7 @@ export class AppComponent implements OnInit, AfterViewInit {
 
   private initCanvas() {
     this.ctx = this.canvas.nativeElement.getContext('2d');
+    console.log(this.ctx);
   }
 
   private async initState() {
@@ -92,27 +102,24 @@ export class AppComponent implements OnInit, AfterViewInit {
     }
 
     onSnapshot(docRef, (doc) => {
+      console.log('onSnapshot');
+
       const payload = doc.data() as {
         nX: number;
         nY: number;
+        clicks: number;
+        synced: boolean;
         nImages: number;
         data: { [index: string]: { [index: string]: number } };
       };
 
+      const { clicks, synced } = payload;
+
       const state = this.mapDataOntoState(payload);
       this.state$?.next(state);
-
-      const success = this.isInSync(state);
-      this.success$?.next(success);
+      this.clicks$?.next(clicks);
+      this.synced$?.next(synced);
     });
-  }
-
-  private initTarget() {
-    const nImages = this.imgs.length;
-
-    this.target = this.imgs.get(
-      Math.floor(Math.random() * nImages)
-    )?.nativeElement.src;
   }
 
   /******************************************
@@ -122,17 +129,19 @@ export class AppComponent implements OnInit, AfterViewInit {
    ******************************************/
 
   private subscribeToStateChanges() {
-    this.state$?.pipe().subscribe((state) => {
+    combineLatest([this.state$, this.synced$]).subscribe(([state, synced]) => {
+      const padding = synced ? 0 : this.padding;
+
       state.map((row, y) =>
         state[y].map(async (col, x) => {
           const coords = this.mapGridElToCoordRange(x, y);
 
           // add padding to the item
           const gridItem = {
-            x: coords.x + this.padding,
-            y: coords.y + this.padding,
-            dX: coords.dX - 2 * this.padding,
-            dY: coords.dY - 2 * this.padding,
+            x: coords.x + padding,
+            y: coords.y + padding,
+            dX: coords.dX - 2 * padding,
+            dY: coords.dY - 2 * padding,
           };
 
           //
@@ -176,6 +185,8 @@ export class AppComponent implements OnInit, AfterViewInit {
     const draft = {
       nX,
       nY,
+      clicks: 0,
+      synced: false,
       nImages,
       data: this.mapStateOntoData(state),
     };
@@ -185,9 +196,28 @@ export class AppComponent implements OnInit, AfterViewInit {
   }
 
   private async updateStateForCoords(x: number, y: number) {
+    if (await this.synced$.pipe(take(1)).toPromise()) {
+      console.log('skip, alrady synced');
+      return;
+    }
+
+    const batch = writeBatch(this.firebaseDB);
+
     const { nX, nY } = this.resolveGridDimensions();
     const docRef = doc(this.firebaseDB, 'boards', `${nX}x${nY}`);
-    await updateDoc(docRef, `data.${x}.${y}`, increment(1));
+
+    batch.update(docRef, `data.${x}.${y}`, increment(1));
+    batch.update(docRef, `clicks`, increment(1));
+
+    const state = await this.state$.pipe(take(1)).toPromise();
+    state[y][x] = state[y][x] + 1;
+
+    if (this.isInSync(this.target, state)) {
+      // await updateDoc(docRef, `synced`, true);
+      batch.update(docRef, `synced`, true);
+    }
+
+    await batch.commit();
   }
 
   /******************************************
@@ -293,17 +323,22 @@ export class AppComponent implements OnInit, AfterViewInit {
     return { x: gX, y: gY };
   }
 
-  private isInSync(state: number[][]): boolean {
-    let pointer: string | undefined = undefined;
-
+  private isInSync(target: string, state: number[][]): boolean {
     return state.every((row, y) =>
       state[y].every((col, x) => {
         const currImg =
           this.mapGridElToImage(state, x, y)?.nativeElement?.src || undefined;
+        console.log(this.mapGridElToImage(state, x, y)?.nativeElement);
 
-        if (pointer === undefined) {
-          pointer = currImg;
-        } else if (pointer !== currImg) {
+        // if (currImg !== target) {
+        //   return false;
+        // }
+
+        console.log('isInSync', target, currImg);
+
+        if (target === undefined) {
+          target = currImg;
+        } else if (!currImg.includes(target)) {
           return false;
         }
 

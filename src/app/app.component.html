@@ -3,11 +3,13 @@
 
   <img
     class="target"
-    [class.rotate-vert-center]="!(success$ | async)"
+    [class.rotate-vert-center]="!(synced$ | async)"
     [src]="target"
   />
 
-  <p class="counter">8 clicks</p>
+  <p class="counter">
+    {{ clicks$ | async | number }} click{{ (clicks$ | async) === 1 ? "" : "s" }}
+  </p>
 
   <canvas #canvas width="512" height="512" (click)="onCanvasClick($event)">
     what have you done?
@@ -15,10 +17,9 @@
 </div>
 
 <div class="dont-look">
-  <img #img id="img-1" src="/assets/test-01.png" />
-  <img #img id="img-2" src="/assets/test-02.png" />
-  <img #img id="img-3" src="/assets/test-03.png" />
-  <img #img id="img-4" src="/assets/test-04.png" />
+  <ng-container *ngFor="let img of list; let i = index">
+    <img #img [id]="'img-' + i" [src]="img" />
+  </ng-container>
 </div>
 
 <!-- <button>RESET</button> -->
